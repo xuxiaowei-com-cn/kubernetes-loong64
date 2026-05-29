@@ -94,6 +94,8 @@ jobs:
           path: |
             kubernetes/_output/local/bin/linux/loong64/*
             !kubernetes/_output/local/bin/linux/loong64/*.test
+            kubernetes/_output/dockerized/bin/linux/loong64/*
+            !kubernetes/_output/dockerized/bin/linux/loong64/*.test
 
   release:
     if: startsWith(github.ref, 'refs/tags/')
