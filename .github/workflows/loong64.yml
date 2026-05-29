@@ -28,5 +28,5 @@ jobs:
           repository: kubernetes/kubernetes
           ref: ${{ env.KUBERNETES_BRANCH }}
           path: kubernetes
-      - name: ll
-        run: ll
+      - name: ls
+        run: ls -lah
