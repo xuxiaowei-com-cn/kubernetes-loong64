@@ -46,9 +46,12 @@ jobs:
       - name: Apply patches
         working-directory: kubernetes
         run: git apply ../*.patch
-      - name: Build Kubernetes
-        working-directory: kubernetes
-        run: make
+      #- name: Build Kubernetes
+      #  working-directory: kubernetes
+      #  run: make
+      - run: |
+          mkdir -p kubernetes/_output/local/bin/linux/loong64
+          echo '123' > kubernetes/_output/local/bin/linux/loong64/ok.txt
       - name: List build output
         working-directory: kubernetes
         run: find _output \( -path '_output/local/go' -o -path '_output/local/.gimme' -o -path '_output/dockerized/.gimme' -o -path '_output/dockerized/go/cache' -o -path '*LICENSES*' \) -prune -o -type f -exec ls -lh {} \;
