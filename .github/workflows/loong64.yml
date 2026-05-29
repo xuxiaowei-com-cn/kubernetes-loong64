@@ -17,3 +17,16 @@ jobs:
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - name: Print branch name
         run: echo ${{ github.ref_name }}
+      - name: Extract Kubernetes branch
+        run: |
+          KUBERNETES_BRANCH=$(echo ${{ github.ref_name }} | awk -F'/' '{print $2}')
+          echo "KUBERNETES_BRANCH=$KUBERNETES_BRANCH"
+          echo "KUBERNETES_BRANCH=$KUBERNETES_BRANCH" >> ${GITHUB_ENV}
+      - name: Clone Kubernetes
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          repository: kubernetes/kubernetes
+          ref: ${{ env.KUBERNETES_BRANCH }}
+          path: kubernetes
+      - name: ll
+        run: ll
