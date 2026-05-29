@@ -18,6 +18,7 @@ jobs:
     env:
       KUBE_BUILD_PLATFORMS: linux/loong64
       KUBE_RELEASE_RUN_TESTS: n
+      KUBE_BASE_IMAGE_REGISTRY: xuxiaoweicomcn
     steps:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
