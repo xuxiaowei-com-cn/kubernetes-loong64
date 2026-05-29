@@ -4,7 +4,7 @@ on:
     branches:
       - loong64/*
     tags:
-      - loong64/*
+      - release-loong64/*
   pull_request:
     branches:
       - loong64/*
