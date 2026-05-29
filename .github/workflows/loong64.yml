@@ -32,6 +32,9 @@ jobs:
           path: kubernetes
       - name: ls
         run: ls -lah
+      - name: Apply patches
+        working-directory: kubernetes
+        run: git apply ../*.patch
       - name: Build Kubernetes
         working-directory: kubernetes
         run: make
