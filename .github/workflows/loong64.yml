@@ -110,10 +110,11 @@ jobs:
         with:
           name: kubernetes-loong64
           path: |
-            kubernetes/_output/local/bin/linux/loong64/*
-            !kubernetes/_output/local/bin/linux/loong64/*.test
-            kubernetes/_output/dockerized/bin/linux/loong64/*
-            !kubernetes/_output/dockerized/bin/linux/loong64/*.test
+            kubernetes/_output/local/bin/linux/*/*
+            !kubernetes/_output/local/bin/linux/*/*.test
+            kubernetes/_output/dockerized/bin/linux/*/*
+            !kubernetes/_output/dockerized/bin/linux/*/*.test
+            kubernetes/_output/release-images/*/*
 
   release:
     if: startsWith(github.ref, 'refs/tags/')
