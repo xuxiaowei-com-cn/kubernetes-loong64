@@ -37,8 +37,8 @@ jobs:
         run: git apply ../*.patch
       - name: Install loong64 cross-compiler
         run: |
-          apt update
-          apt install -y gcc-loongarch64-linux-gnu binutils-loongarch64-linux-gnu
+          sudo apt update
+          sudo apt install -y gcc-loongarch64-linux-gnu binutils-loongarch64-linux-gnu
       - name: Build Kubernetes
         working-directory: kubernetes
         run: make
