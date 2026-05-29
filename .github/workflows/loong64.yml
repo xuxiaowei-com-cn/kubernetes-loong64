@@ -58,7 +58,7 @@ jobs:
         run: git apply ../*.patch
       - name: Build Kubernetes
         working-directory: kubernetes
-        run: make
+        run: make release-in-a-container
       - name: List build output
         working-directory: kubernetes
         run: find _output \( -path '_output/local/go' -o -path '_output/local/.gimme' -o -path '_output/dockerized/.gimme' -o -path '_output/dockerized/go/cache' -o -path '*LICENSES*' \) -prune -o -type f -exec ls -lh {} \;
