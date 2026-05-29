@@ -12,9 +12,18 @@ A GitHub Actions workflow clones the specified Kubernetes version, applies a pat
 
 Create a branch named `loong64/<kubernetes-version>` (e.g. `loong64/v1.36.1`) to trigger a build.
 
-## Release
+## [Release](https://github.com/xuxiaowei-com-cn/kubernetes-loong64/releases)
 
 Push a tag matching `release-loong64/<kubernetes-version>/<sequence>` (e.g. `release-loong64/v1.36.1/1-alpha.1`) to publish a GitHub Release with the built binaries.
+
+The suffix in the sequence indicates the release stage:
+
+| Suffix  | Stage         |
+|---------|---------------|
+| `alpha` | Internal beta |
+| `beta`  | Public beta   |
+| `rc`    | Pre-release   |
+| (none)  | Stable        |
 
 ## License
 
