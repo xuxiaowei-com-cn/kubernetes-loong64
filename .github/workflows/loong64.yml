@@ -134,6 +134,24 @@ jobs:
           path: loong64-artifacts
       - name: List downloaded files
         run: find . -type f
+      - name: Import GPG key
+        run: |
+          echo "${{ secrets.GPG_PRIVATE_KEY_BASE64 }}" | base64 -d | gpg --batch --import > /dev/null
+          echo "$(gpg --list-secret-keys --keyid-format LONG | grep -Eo '[A-F0-9]{40}' | head -1):6:" | gpg --import-ownertrust
+      - name: Sign artifacts
+        run: |
+          find loong64-artifacts -type f | while read -r file; do
+            gpg --detach-sign --armor "$file"
+            echo "Signed: $file"
+            gpg --verify "$file".asc "$file"
+          done
+      - name: Package signatures
+        run: |
+          mkdir signatures
+          find loong64-artifacts -name '*.asc' -exec mv {} signatures \;
+          find signatures -name '*.asc' | tar -czf loong64-artifacts/signatures.tar.gz -T -
+      - name: List Release files
+        run: find loong64-artifacts -type f
       - name: Create Release
         uses: softprops/action-gh-release@b4309332981a82ec1c5618f44dd2e27cc8bfbfda # v3.0.0
         with:
