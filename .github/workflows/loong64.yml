@@ -10,6 +10,7 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    container: debian:13
     permissions:
       contents: read
     env:
@@ -37,8 +38,8 @@ jobs:
         run: git apply ../*.patch
       - name: Install loong64 cross-compiler
         run: |
-          sudo apt update
-          sudo apt install -y gcc-loongarch64-linux-gnu binutils-loongarch64-linux-gnu
+          apt update
+          apt install -y gcc-loongarch64-linux-gnu binutils-loongarch64-linux-gnu
       - name: Build Kubernetes
         working-directory: kubernetes
         run: make
