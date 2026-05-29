@@ -73,7 +73,10 @@ jobs:
           apt update
           apt install -y docker-ce-cli
       - name: Verify Docker installation
-        run: docker info
+        run: |
+          ls -la /run/docker.sock 2>/dev/null || echo "/run/docker.sock not found"
+          echo "DOCKER_HOST=$DOCKER_HOST"
+          docker info
       - name: Apply patches
         working-directory: kubernetes
         run: git apply ../*.patch
