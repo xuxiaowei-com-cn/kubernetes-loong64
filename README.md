@@ -14,7 +14,7 @@ Create a branch named `loong64/<kubernetes-version>` (e.g. `loong64/v1.36.1`) to
 
 ## Release
 
-Push a tag matching `release-loong64/<kubernetes-version>/<sequence>` (e.g. `release-loong64/v1.36.1/alpha.1`) to publish a GitHub Release with the built binaries.
+Push a tag matching `release-loong64/<kubernetes-version>/<sequence>` (e.g. `release-loong64/v1.36.1/1-alpha.1`) to publish a GitHub Release with the built binaries.
 
 ## License
 
