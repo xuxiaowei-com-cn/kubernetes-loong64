@@ -21,10 +21,20 @@ jobs:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - name: Print branch name
-        run: echo ${{ github.ref_name }}
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            echo "${{ github.base_ref }} (PR target)"
+          else
+            echo ${{ github.ref_name }}
+          fi
       - name: Extract Kubernetes branch
         run: |
-          KUBERNETES_BRANCH=$(echo ${{ github.ref_name }} | awk -F'/' '{print $2}')
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            REF=${{ github.base_ref }}
+          else
+            REF=${{ github.ref_name }}
+          fi
+          KUBERNETES_BRANCH=$(echo $REF | awk -F'/' '{print $2}')
           echo "KUBERNETES_BRANCH=$KUBERNETES_BRANCH"
           echo "KUBERNETES_BRANCH=$KUBERNETES_BRANCH" >> ${GITHUB_ENV}
       - name: Clone Kubernetes
