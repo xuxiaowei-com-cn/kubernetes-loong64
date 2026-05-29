@@ -82,6 +82,9 @@ jobs:
       - name: Apply patches
         working-directory: kubernetes
         run: git apply ../*.patch
+      - name: Fix conformance image Makefile path
+        working-directory: kubernetes
+        run: sed -i "s#build-image/debian-base#build-image-debian-base#" test/conformance/image/Makefile
       - name: Build Kubernetes
         working-directory: kubernetes
         run: make release-in-a-container
