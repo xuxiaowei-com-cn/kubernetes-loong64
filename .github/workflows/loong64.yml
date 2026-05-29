@@ -50,3 +50,10 @@ jobs:
       - name: List build output
         working-directory: kubernetes
         run: find _output \( -path '_output/local/go' -o -path '_output/local/.gimme' -o -path '_output/dockerized/.gimme' -o -path '_output/dockerized/go/cache' -o -path '*LICENSES*' \) -prune -o -type f -exec ls -lh {} \;
+      - name: Upload artifacts
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: kubernetes-loong64
+          path: |
+            kubernetes/_output/local/bin/linux/loong64/*
+            !kubernetes/_output/local/bin/linux/loong64/*.test
