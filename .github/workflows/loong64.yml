@@ -35,6 +35,10 @@ jobs:
       - name: Apply patches
         working-directory: kubernetes
         run: git apply ../*.patch
+      - name: Install loong64 cross-compiler
+        run: |
+          apt update
+          apt install -y gcc-loongarch64-linux-gnu binutils-loongarch64-linux-gnu
       - name: Build Kubernetes
         working-directory: kubernetes
         run: make
