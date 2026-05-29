@@ -25,6 +25,23 @@ The suffix in the sequence indicates the release stage:
 | `rc`    | Pre-release   |
 | (none)  | Stable        |
 
+## Verify releases
+
+Releases are signed with GPG. Download the public key from [keys.openpgp.org](https://keys.openpgp.org) [F3693AB74BBA0D84C227AB34F3A4B5061568FC57](https://keys.openpgp.org/debug?q=F3693AB74BBA0D84C227AB34F3A4B5061568FC57)：
+
+```shell
+gpg --keyserver keys.openpgp.org --recv-keys F3693AB74BBA0D84C227AB34F3A4B5061568FC57
+echo "F3693AB74BBA0D84C227AB34F3A4B5061568FC57:6:" | gpg --import-ownertrust
+```
+
+Each release includes a `signatures.tar.gz` containing detached signatures for all artifacts. To verify:
+
+```shell
+# Download signatures.tar.gz from the release, then:
+tar -xzf signatures.tar.gz --strip-components=1
+gpg --verify <file>.asc <file>
+```
+
 ## License
 
 [Apache License 2.0](LICENSE)
