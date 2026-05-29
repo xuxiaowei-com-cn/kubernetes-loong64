@@ -83,6 +83,24 @@ jobs:
       - name: List build output
         working-directory: kubernetes
         run: find _output \( -path '_output/local/go' -o -path '_output/local/.gimme' -o -path '_output/dockerized/.gimme' -o -path '_output/dockerized/go/cache' -o -path '*LICENSES*' \) -prune -o -type f -exec ls -lh {} \;
+      - name: Print binary checksums
+        working-directory: kubernetes
+        run: |
+          find . -type f -name apiextensions-apiserver | xargs md5sum
+          find . -type f -name ginkgo | xargs md5sum
+          find . -type f -name go-runner | xargs md5sum
+          find . -type f -name kubeadm | xargs md5sum
+          find . -type f -name kube-aggregator | xargs md5sum
+          find . -type f -name kube-apiserver | xargs md5sum
+          find . -type f -name kube-controller-manager | xargs md5sum
+          find . -type f -name kubectl | xargs md5sum
+          find . -type f -name kubectl-convert | xargs md5sum
+          find . -type f -name kubelet | xargs md5sum
+          find . -type f -name kube-log-runner | xargs md5sum
+          find . -type f -name kubemark | xargs md5sum
+          find . -type f -name kube-proxy | xargs md5sum
+          find . -type f -name kube-scheduler | xargs md5sum
+          find . -type f -name mounter | xargs md5sum
       - name: Upload artifacts
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
