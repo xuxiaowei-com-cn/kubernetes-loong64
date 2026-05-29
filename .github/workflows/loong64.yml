@@ -30,3 +30,6 @@ jobs:
           path: kubernetes
       - name: ls
         run: ls -lah
+      - name: Build Kubernetes
+        working-directory: kubernetes
+        run: make
