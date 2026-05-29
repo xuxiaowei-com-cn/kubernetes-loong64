@@ -3,6 +3,8 @@ on:
   push:
     branches:
       - loong64/*
+    tags:
+      - loong64/*
   pull_request:
     branches:
       - loong64/*
@@ -55,5 +57,24 @@ jobs:
         with:
           name: kubernetes-loong64
           path: |
+            kubernetes/_output/local/bin/linux/loong64/*
+            !kubernetes/_output/local/bin/linux/loong64/*.test
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/')
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: kubernetes-loong64
+      - name: Create Release
+        uses: softprops/action-gh-release@b4309332981a82ec1c5618f44dd2e27cc8bfbfda # v3.0.0
+        with:
+          name: ${{ github.ref_name }}
+          files: |
             kubernetes/_output/local/bin/linux/loong64/*
             !kubernetes/_output/local/bin/linux/loong64/*.test
