@@ -103,7 +103,7 @@ jobs:
           make container
           docker images
           ls -lha
-          tar -tvf pause.tar
+          tar -xvf pause.tar && find pause -type f
       - name: Build Kubernetes
         working-directory: kubernetes
         run: make release-in-a-container
