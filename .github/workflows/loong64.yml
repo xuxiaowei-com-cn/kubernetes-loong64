@@ -103,8 +103,7 @@ jobs:
           docker images
           docker save -o pause.tar $(docker images registry.k8s.io/pause --format "{{.ID}}")
           ls -lha
-          tar -xvf pause.tar
-          tar -xOf pause.tar repositories || tar -xOf pause.tar manifest.json | jq
+          tar -xOf pause.tar index.json || tar -xOf pause.tar manifest.json | jq
       - name: Upload pause image
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
