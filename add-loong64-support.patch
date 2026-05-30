@@ -1,5 +1,5 @@
 diff --git a/build/pause/Makefile b/build/pause/Makefile
-index c2446d8cd6b..28d062d1e05 100644
+index c2446d8cd6b..b022442e37e 100644
 --- a/build/pause/Makefile
 +++ b/build/pause/Makefile
 @@ -20,7 +20,7 @@ IMAGE = $(REGISTRY)/pause
@@ -28,6 +28,27 @@ index c2446d8cd6b..28d062d1e05 100644
  TRIPLE := ${TRIPLE.${OS}-${ARCH}}
  
  # If you want to build AND push all containers, see the 'all-push' rule.
+@@ -104,6 +105,12 @@ sub-container-%:
+ 
+ build: $(foreach binary, ${BIN}, bin/${binary}-${OS}-${ARCH})
+ 
++ifneq ($(USE_LOCAL_CC),)
++bin/${BIN.linux}-$(OS)-$(ARCH): $(SRCS)
++	mkdir -p bin
++	$(TRIPLE)-gcc $(CFLAGS) -o $@ $^
++	$(TRIPLE)-strip $@
++else
+ bin/${BIN.linux}-$(OS)-$(ARCH): $(SRCS)
+ 	mkdir -p bin
+ 	docker run --rm -u $$(id -u):$$(id -g) -v $$(pwd):/build \
+@@ -112,6 +119,7 @@ bin/${BIN.linux}-$(OS)-$(ARCH): $(SRCS)
+ 			cd /build && \
+ 			$(TRIPLE)-gcc $(CFLAGS) -o $@ $^ && \
+ 			$(TRIPLE)-strip $(foreach binary, $@, ${binary}${EXTENSION})"
++endif
+ 
+ bin/wincat-windows-${ARCH}: windows/wincat/wincat.go
+ 	mkdir -p bin
 diff --git a/hack/lib/golang.sh b/hack/lib/golang.sh
 index 95c775f8f70..9fd49c2f9f6 100755
 --- a/hack/lib/golang.sh
