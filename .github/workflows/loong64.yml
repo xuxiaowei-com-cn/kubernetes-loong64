@@ -39,6 +39,11 @@ jobs:
           KUBERNETES_BRANCH=$(echo $REF | awk -F'/' '{print $2}')
           echo "KUBERNETES_BRANCH=$KUBERNETES_BRANCH"
           echo "KUBERNETES_BRANCH=$KUBERNETES_BRANCH" >> ${GITHUB_ENV}
+      - name: Extract CPU architecture
+        run: |
+          KUBE_CPU_ARCH="${KUBE_BUILD_PLATFORMS##*/}"
+          echo "KUBE_CPU_ARCH=$KUBE_CPU_ARCH"
+          echo "KUBE_CPU_ARCH=$KUBE_CPU_ARCH" >> ${GITHUB_ENV}
       - name: Clone Kubernetes
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
@@ -50,7 +55,7 @@ jobs:
       - name: Install build tools
         run: |
           apt update
-          apt install -y git make curl file
+          apt install -y git make curl jq file
       - name: Install loong64 cross-compiler
         run: |
           apt update
@@ -119,6 +124,17 @@ jobs:
           if [ -d _output/dockerized/bin/linux ]; then
             echo "=== _output/dockerized/bin/linux ==="
             file _output/dockerized/bin/linux/*/*
+          fi
+      - name: Inspect release image manifests
+        working-directory: kubernetes
+        run: |
+          if [ -d _output/release-images ]; then
+            tar -xOf _output/release-images/$KUBE_CPU_ARCH/kube-controller-manager.tar repositories || tar -xOf _output/release-images/$KUBE_CPU_ARCH/kube-controller-manager.tar manifest.json | jq
+            tar -xOf _output/release-images/$KUBE_CPU_ARCH/kube-scheduler.tar repositories || tar -xOf _output/release-images/$KUBE_CPU_ARCH/kube-scheduler.tar manifest.json | jq
+            tar -xOf _output/release-images/$KUBE_CPU_ARCH/kube-apiserver.tar repositories || tar -xOf _output/release-images/$KUBE_CPU_ARCH/kube-apiserver.tar manifest.json | jq
+            tar -xOf _output/release-images/$KUBE_CPU_ARCH/kubectl.tar repositories || tar -xOf _output/release-images/$KUBE_CPU_ARCH/kubectl.tar manifest.json | jq
+            tar -xOf _output/release-images/$KUBE_CPU_ARCH/conformance-$KUBE_CPU_ARCH.tar repositories || tar -xOf _output/release-images/$KUBE_CPU_ARCH/conformance-$KUBE_CPU_ARCH.tar manifest.json | jq
+            tar -xOf _output/release-images/$KUBE_CPU_ARCH/kube-proxy.tar repositories || tar -xOf _output/release-images/$KUBE_CPU_ARCH/kube-proxy.tar manifest.json | jq
           fi
       - name: Upload artifacts
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
