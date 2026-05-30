@@ -167,23 +167,26 @@ jobs:
           echo "KUBERNETES_BRANCH=$KUBERNETES_BRANCH" >> ${GITHUB_ENV}
           URL="${{ github.server_url }}/${{ github.repository }}/releases/download/${{ github.ref_name }}"
           {
-            echo '**Docker**'
+            echo '**Docker Images**'
             echo
             echo '```shell'
             find loong64-artifacts -type f -name '*.tar' ! -name '*.tar.gz' | sort | sed "s|.*/|curl -LO ${URL}/|"
             echo '```'
             echo
-            echo '**Usage Docker**'
+            echo '**Usage Docker Images**'
             echo
             echo '```shell'
             echo '# After downloading the Docker tar files, import into containerd:'
             find loong64-artifacts -type f -name '*.tar' ! -name '*.tar.gz' | sort | sed 's|.*/|ctr -n k8s.io i import |'
             echo '# List imported images to find the loong64 image names:'
             echo "ctr -n k8s.io i ls | grep -vE '^sha256:' | awk '{print \$1}'"
-            echo '# Tag the loong64 image to the standard Kubernetes registry name:'
-            echo "ctr -n k8s.io i tag registry.k8s.io/<component>-loong64:${{ env.KUBERNETES_BRANCH }} registry.k8s.io/<component>:${{ env.KUBERNETES_BRANCH }}"
-            echo '# Example:'
-            echo "ctr -n k8s.io i tag registry.k8s.io/kube-apiserver-loong64:${{ env.KUBERNETES_BRANCH }} registry.k8s.io/kube-apiserver:${{ env.KUBERNETES_BRANCH }}"
+            echo '# Tag the loong64 images to the standard Kubernetes registry names:'
+            echo "ctr -n k8s.io i tag registry.k8s.io/kube-apiserver-loong64:${{ env.KUBERNETES_BRANCH }}-dirty registry.k8s.io/kube-apiserver:${{ env.KUBERNETES_BRANCH }}"
+            echo "ctr -n k8s.io i tag registry.k8s.io/kube-controller-manager-loong64:${{ env.KUBERNETES_BRANCH }}-dirty registry.k8s.io/kube-controller-manager:${{ env.KUBERNETES_BRANCH }}"
+            echo "ctr -n k8s.io i tag registry.k8s.io/kube-scheduler-loong64:${{ env.KUBERNETES_BRANCH }}-dirty registry.k8s.io/kube-scheduler:${{ env.KUBERNETES_BRANCH }}"
+            echo "ctr -n k8s.io i tag registry.k8s.io/kube-proxy-loong64:${{ env.KUBERNETES_BRANCH }}-dirty registry.k8s.io/kube-proxy:${{ env.KUBERNETES_BRANCH }}"
+            echo "ctr -n k8s.io i tag registry.k8s.io/kubectl-loong64:${{ env.KUBERNETES_BRANCH }}-dirty registry.k8s.io/kubectl:${{ env.KUBERNETES_BRANCH }}"
+            echo "ctr -n k8s.io i ls | grep -vE '^sha256:' | awk '{print \$1}'"
             echo '```'
             echo
             echo '**Binary**'
@@ -198,10 +201,12 @@ jobs:
             find loong64-artifacts -type f -name '*.tar.gz' | sort | sed "s|.*/|curl -LO ${URL}/|"
             echo '```'
           } > /tmp/release-body.md
+          echo '--- RELEASE_BODY preview ---'
+          cat /tmp/release-body.md
+          echo '--- end preview ---'
           echo "RELEASE_BODY<<EOF" >> $GITHUB_OUTPUT
           cat /tmp/release-body.md >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
-          echo "RELEASE_BODY=$RELEASE_BODY"
 
   release:
     if: startsWith(github.ref, 'refs/tags/')
