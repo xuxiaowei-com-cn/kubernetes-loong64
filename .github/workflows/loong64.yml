@@ -90,6 +90,9 @@ jobs:
       - name: Fix conformance image Makefile path
         working-directory: kubernetes
         run: sed -i "s#build-image/debian-base#debian-base#" test/conformance/image/Makefile
+      - name: Build pause
+        working-directory: kubernetes/build/pause
+        run: make
       - name: Build Kubernetes
         working-directory: kubernetes
         run: make release-in-a-container

@@ -1,3 +1,33 @@
+diff --git a/build/pause/Makefile b/build/pause/Makefile
+index c2446d8cd6b..28d062d1e05 100644
+--- a/build/pause/Makefile
++++ b/build/pause/Makefile
+@@ -20,7 +20,7 @@ IMAGE = $(REGISTRY)/pause
+ TAG ?= 3.10.2
+ REV = $(shell git describe --contains --always --match='v*')
+ 
+-# Architectures supported: amd64, arm, arm64, ppc64le and s390x
++# Architectures supported: amd64, arm, arm64, ppc64le, s390x and loong64
+ ARCH ?= amd64
+ # Operating systems supported: linux, windows
+ OS ?= linux
+@@ -38,7 +38,7 @@ BASE := ${BASE.${OS}}
+ JQ_IMAGE := ghcr.io/jqlang/jq@sha256:a186dcd84a1e28bb48cdf3d7768b890d08621a87bb651fadb7db6815a6bf5ad5
+ 
+ ALL_OS = linux windows
+-ALL_ARCH.linux = amd64 arm arm64 ppc64le s390x
++ALL_ARCH.linux = amd64 arm arm64 ppc64le s390x loong64
+ ALL_OS_ARCH.linux = $(foreach arch, ${ALL_ARCH.linux}, linux-$(arch))
+ ALL_ARCH.windows = amd64
+ # ALL_OSVERSIONS lists all os.versions in BASE.windows.
+@@ -73,6 +73,7 @@ TRIPLE.linux-arm := arm-linux-gnueabihf
+ TRIPLE.linux-arm64 := aarch64-linux-gnu
+ TRIPLE.linux-ppc64le := powerpc64le-linux-gnu
+ TRIPLE.linux-s390x := s390x-linux-gnu
++TRIPLE.linux-loong64 := loongarch64-linux-gnu
+ TRIPLE := ${TRIPLE.${OS}-${ARCH}}
+ 
+ # If you want to build AND push all containers, see the 'all-push' rule.
 diff --git a/hack/lib/golang.sh b/hack/lib/golang.sh
 index 95c775f8f70..9fd49c2f9f6 100755
 --- a/hack/lib/golang.sh
