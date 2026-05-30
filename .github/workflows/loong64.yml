@@ -179,9 +179,65 @@ jobs:
           find signatures -name '*.asc' | tar -czf loong64-artifacts/signatures.tar.gz -T -
       - name: List Release files
         run: find loong64-artifacts -type f
+      - name: Generate body
+        id: generate-body
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            REF=${{ github.base_ref }}
+          else
+            REF=${{ github.ref_name }}
+          fi
+          KUBERNETES_BRANCH=$(echo $REF | awk -F'/' '{print $2}')
+          echo "KUBERNETES_BRANCH=$KUBERNETES_BRANCH"
+          URL="${{ github.server_url }}/${{ github.repository }}/releases/download/${{ github.ref_name }}"
+          {
+            echo '**Docker Images**'
+            echo
+            echo '```shell'
+            find loong64-artifacts -type f -name '*.tar' ! -name '*.tar.gz' | sort | sed "s|.*/|curl -LO ${URL}/|"
+            echo '```'
+            echo
+            echo '**Usage Docker Images**'
+            echo
+            echo '```shell'
+            echo '# Check current images in containerd before importing:'
+            echo "ctr -n k8s.io i ls | grep -vE '^sha256:' | awk '{print \$1}'"
+            echo '# After downloading the Docker tar files, import into containerd:'
+            find loong64-artifacts -type f -name '*.tar' ! -name '*.tar.gz' | sort | sed 's|.*/|ctr -n k8s.io i import |'
+            echo '# List images after importing to find the loong64 image names:'
+            echo "ctr -n k8s.io i ls | grep -vE '^sha256:' | awk '{print \$1}'"
+            echo '# Tag the loong64 images to the standard Kubernetes registry names:'
+            echo "ctr -n k8s.io i tag registry.k8s.io/kube-apiserver-loong64:${KUBERNETES_BRANCH}-dirty registry.k8s.io/kube-apiserver:${KUBERNETES_BRANCH}"
+            echo "ctr -n k8s.io i tag registry.k8s.io/kube-controller-manager-loong64:${KUBERNETES_BRANCH}-dirty registry.k8s.io/kube-controller-manager:${KUBERNETES_BRANCH}"
+            echo "ctr -n k8s.io i tag registry.k8s.io/kube-scheduler-loong64:${KUBERNETES_BRANCH}-dirty registry.k8s.io/kube-scheduler:${KUBERNETES_BRANCH}"
+            echo "ctr -n k8s.io i tag registry.k8s.io/kube-proxy-loong64:${KUBERNETES_BRANCH}-dirty registry.k8s.io/kube-proxy:${KUBERNETES_BRANCH}"
+            echo "ctr -n k8s.io i tag registry.k8s.io/kubectl-loong64:${KUBERNETES_BRANCH}-dirty registry.k8s.io/kubectl:${KUBERNETES_BRANCH}"
+            echo '# List images after tagging to verify:'
+            echo "ctr -n k8s.io i ls | grep -vE '^sha256:' | awk '{print \$1}'"
+            echo '```'
+            echo
+            echo '**Binary**'
+            echo
+            echo '```shell'
+            find loong64-artifacts -type f ! -name '*.tar' ! -name '*.tar.gz' | sort | sed "s|.*/|curl -LO ${URL}/|"
+            echo '```'
+            echo
+            echo '**Signatures**'
+            echo
+            echo '```shell'
+            find loong64-artifacts -type f -name '*.tar.gz' | sort | sed "s|.*/|curl -LO ${URL}/|"
+            echo '```'
+          } > /tmp/release-body.md
+          echo '--- RELEASE_BODY preview ---'
+          cat /tmp/release-body.md
+          echo '--- end preview ---'
+          echo "RELEASE_BODY<<EOF" >> $GITHUB_OUTPUT
+          cat /tmp/release-body.md >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
       - name: Create Release
         uses: softprops/action-gh-release@b4309332981a82ec1c5618f44dd2e27cc8bfbfda # v3.0.0
         with:
           name: ${{ github.ref_name }}
+          body: ${{ steps.generate-body.outputs.RELEASE_BODY }}
           files: |
             loong64-artifacts/**
