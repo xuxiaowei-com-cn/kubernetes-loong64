@@ -96,7 +96,6 @@ jobs:
           ARCH: loong64
           REGISTRY: registry.k8s.io
           USE_LOCAL_CC: 1
-          a: registry.k8s.io
           OUTPUT_TYPE: tar,dest=pause.tar
         run: |
           docker images
@@ -104,7 +103,7 @@ jobs:
           make container
           docker images
           ls -lha
-          tar -xOf pause.tar repositories || tar -xOf pause.tar manifest.json | jq
+          tar -xOf pause.tar index.json | jq
       - name: Build Kubernetes
         working-directory: kubernetes
         run: make release-in-a-container
