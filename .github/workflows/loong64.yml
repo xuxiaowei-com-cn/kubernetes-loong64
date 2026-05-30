@@ -109,6 +109,17 @@ jobs:
           find . -type f -name kube-proxy | xargs sha256sum
           find . -type f -name kube-scheduler | xargs sha256sum
           find . -type f -name mounter | xargs sha256sum
+      - name: Inspect binary file types
+        working-directory: kubernetes
+        run: |
+          if [ -d _output/local/bin/linux ]; then
+            echo "=== _output/local/bin/linux ==="
+            file _output/local/bin/linux/*/*
+          fi
+          if [ -d _output/dockerized/bin/linux ]; then
+            echo "=== _output/dockerized/bin/linux ==="
+            file _output/dockerized/bin/linux/*/*
+          fi
       - name: Upload artifacts
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
