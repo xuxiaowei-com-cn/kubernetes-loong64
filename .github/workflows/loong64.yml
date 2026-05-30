@@ -101,7 +101,7 @@ jobs:
           ls -lha
           make container
           docker images
-          docker save -o pause.tar $(docker images pause --format "{{.ID}}")
+          docker save -o pause.tar $(docker images registry.k8s.io/pause --format "{{.ID}}")
           ls -lha
           tar -xvf pause.tar && find pause -type f
       - name: Upload pause image
