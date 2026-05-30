@@ -100,8 +100,10 @@ jobs:
           OUTPUT_TYPE: tar,dest=pause.tar
         run: |
           docker images
+          ls -lha
           make container
           docker images
+          ls -lha
       - name: Build Kubernetes
         working-directory: kubernetes
         run: make release-in-a-container
