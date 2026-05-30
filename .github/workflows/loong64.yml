@@ -94,7 +94,7 @@ jobs:
         working-directory: kubernetes/build/pause
         run: |
           docker images
-          make ARCH=loong64 USE_LOCAL_CC=1 container
+          make ARCH=loong64 USE_LOCAL_CC=1 container OUTPUT_TYPE=tar
           docker images
       - name: Build Kubernetes
         working-directory: kubernetes
