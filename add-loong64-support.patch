@@ -124,3 +124,16 @@ index ed067cc7a30..f08121e811a 100755
        exit 1
        ;;
    esac
+diff --git a/test/conformance/image/Makefile b/test/conformance/image/Makefile
+index 61a963f6352..3d02347688e 100644
+--- a/test/conformance/image/Makefile
++++ b/test/conformance/image/Makefile
+@@ -34,7 +34,7 @@ CLUSTER_DIR?=$(shell pwd)/../../../cluster/
+ # This is defined in root Makefile, but some build contexts do not refer to them
+ KUBE_BASE_IMAGE_REGISTRY?=registry.k8s.io
+ BASE_IMAGE_VERSION?=bookworm-v1.0.6
+-RUNNERIMAGE?=${KUBE_BASE_IMAGE_REGISTRY}/build-image/debian-base-${ARCH}:${BASE_IMAGE_VERSION}
++RUNNERIMAGE?=${KUBE_BASE_IMAGE_REGISTRY}/debian-base-${ARCH}:${BASE_IMAGE_VERSION}
+ 
+ TEMP_DIR:=$(shell mktemp -d -t conformance-XXXXXX)
+ 
