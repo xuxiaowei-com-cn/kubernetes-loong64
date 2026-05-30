@@ -176,9 +176,11 @@ jobs:
             echo '**Usage Docker Images**'
             echo
             echo '```shell'
+            echo '# Check current images in containerd before importing:'
+            echo "ctr -n k8s.io i ls | grep -vE '^sha256:' | awk '{print \$1}'"
             echo '# After downloading the Docker tar files, import into containerd:'
             find loong64-artifacts -type f -name '*.tar' ! -name '*.tar.gz' | sort | sed 's|.*/|ctr -n k8s.io i import |'
-            echo '# List imported images to find the loong64 image names:'
+            echo '# List images after importing to find the loong64 image names:'
             echo "ctr -n k8s.io i ls | grep -vE '^sha256:' | awk '{print \$1}'"
             echo '# Tag the loong64 images to the standard Kubernetes registry names:'
             echo "ctr -n k8s.io i tag registry.k8s.io/kube-apiserver-loong64:${{ env.KUBERNETES_BRANCH }}-dirty registry.k8s.io/kube-apiserver:${{ env.KUBERNETES_BRANCH }}"
@@ -186,6 +188,7 @@ jobs:
             echo "ctr -n k8s.io i tag registry.k8s.io/kube-scheduler-loong64:${{ env.KUBERNETES_BRANCH }}-dirty registry.k8s.io/kube-scheduler:${{ env.KUBERNETES_BRANCH }}"
             echo "ctr -n k8s.io i tag registry.k8s.io/kube-proxy-loong64:${{ env.KUBERNETES_BRANCH }}-dirty registry.k8s.io/kube-proxy:${{ env.KUBERNETES_BRANCH }}"
             echo "ctr -n k8s.io i tag registry.k8s.io/kubectl-loong64:${{ env.KUBERNETES_BRANCH }}-dirty registry.k8s.io/kubectl:${{ env.KUBERNETES_BRANCH }}"
+            echo '# List images after tagging to verify:'
             echo "ctr -n k8s.io i ls | grep -vE '^sha256:' | awk '{print \$1}'"
             echo '```'
             echo
