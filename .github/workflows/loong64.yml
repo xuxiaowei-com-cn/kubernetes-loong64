@@ -92,7 +92,7 @@ jobs:
         run: sed -i "s#build-image/debian-base#debian-base#" test/conformance/image/Makefile
       - name: Build pause
         working-directory: kubernetes/build/pause
-        run: make
+        run: make ARCH=loong64 container
       - name: Build Kubernetes
         working-directory: kubernetes
         run: make release-in-a-container
