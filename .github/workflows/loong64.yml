@@ -50,7 +50,7 @@ jobs:
       - name: Install build tools
         run: |
           apt update
-          apt install -y git make curl
+          apt install -y git make curl file
       - name: Install loong64 cross-compiler
         run: |
           apt update
