@@ -103,7 +103,7 @@ jobs:
           make container
           docker images
           ls -lha
-          tar -xOf pause.tar index.json | jq
+          tar -tvf pause.tar
       - name: Build Kubernetes
         working-directory: kubernetes
         run: make release-in-a-container
