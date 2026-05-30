@@ -2,7 +2,7 @@
 
 [English](README.md) | [中文](README-zh.md)
 
-通过 CI/CD 构建 [Kubernetes](https://github.com/kubernetes/kubernetes) 的 **LoongArch64 (loong64)** 架构二进制文件。
+通过 CI/CD 构建 [Kubernetes](https://github.com/kubernetes/kubernetes) 的 **LoongArch64 (loong64)** 架构二进制文件和 Docker 镜像。
 
 ## 工作原理
 

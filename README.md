@@ -2,7 +2,7 @@
 
 [English](README.md) | [中文](README-zh.md)
 
-Build [Kubernetes](https://github.com/kubernetes/kubernetes) binaries for the **LoongArch64 (loong64)** architecture via CI/CD.
+Build [Kubernetes](https://github.com/kubernetes/kubernetes) binaries and Docker images for the **LoongArch64 (loong64)** architecture via CI/CD.
 
 ## How it works
 
