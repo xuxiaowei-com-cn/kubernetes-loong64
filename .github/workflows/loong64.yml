@@ -13,6 +13,8 @@ jobs:
   build:
     runs-on: ubuntu-latest
     container: debian:13
+    outputs:
+      PAUSE_TAG: ${{ steps.build-pause.outputs.PAUSE_TAG }}
     permissions:
       contents: read
     env:
@@ -91,6 +93,7 @@ jobs:
         working-directory: kubernetes
         run: sed -i "s#build-image/debian-base#debian-base#" test/conformance/image/Makefile
       - name: Build pause
+        id: build-pause
         working-directory: kubernetes/build/pause
         env:
           ARCH: loong64
@@ -101,6 +104,9 @@ jobs:
           ls -lha
           make container
           docker images
+          PAUSE_TAG=$(docker images registry.k8s.io/pause --format "{{.Tag}}")
+          echo "PAUSE_TAG=$PAUSE_TAG"
+          echo "PAUSE_TAG=$PAUSE_TAG" >> $GITHUB_OUTPUT
           docker save -o pause.tar $(docker images registry.k8s.io/pause --format "{{.ID}}")
           ls -lha
           tar -xOf pause.tar index.json || tar -xOf pause.tar manifest.json | jq
@@ -223,6 +229,10 @@ jobs:
           fi
           KUBERNETES_BRANCH=$(echo $REF | awk -F'/' '{print $2}')
           echo "KUBERNETES_BRANCH=$KUBERNETES_BRANCH"
+          PAUSE_TAG=${{ needs.build.outputs.PAUSE_TAG }}
+          echo "PAUSE_TAG=$PAUSE_TAG"
+          PAUSE_TAG_SHORT=$(echo "$PAUSE_TAG" | sed 's/-linux-loong64$//')
+          echo "PAUSE_TAG_SHORT=$PAUSE_TAG_SHORT"
           URL="${{ github.server_url }}/${{ github.repository }}/releases/download/${{ github.ref_name }}"
           {
             echo '**Docker Images**'
@@ -246,6 +256,7 @@ jobs:
             echo "ctr -n k8s.io i tag registry.k8s.io/kube-scheduler-loong64:${KUBERNETES_BRANCH}-dirty registry.k8s.io/kube-scheduler:${KUBERNETES_BRANCH}"
             echo "ctr -n k8s.io i tag registry.k8s.io/kube-proxy-loong64:${KUBERNETES_BRANCH}-dirty registry.k8s.io/kube-proxy:${KUBERNETES_BRANCH}"
             echo "ctr -n k8s.io i tag registry.k8s.io/kubectl-loong64:${KUBERNETES_BRANCH}-dirty registry.k8s.io/kubectl:${KUBERNETES_BRANCH}"
+            echo "ctr -n k8s.io i tag registry.k8s.io/pause:${PAUSE_TAG} registry.k8s.io/pause:${PAUSE_TAG_SHORT}"
             echo '# List images after tagging to verify:'
             echo "ctr -n k8s.io i ls | grep -vE '^sha256:' | awk '{print \$1}'"
             echo '```'
