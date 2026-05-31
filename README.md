@@ -1,6 +1,8 @@
 # Kubernetes for LoongArch64
 
-[English](README.md) | [中文](README-zh.md)
+<p align="center"><a href="README.md">English</a> | <a href="README-zh.md">中文</a></p>
+
+<p align="center"><img src="https://img.shields.io/badge/Kubernetes%20Release%20LoongArch64%20%E9%BE%99%E8%8A%AF%E6%9E%B6%E6%9E%84%E5%8F%91%E8%A1%8C%E7%89%88-blue?logo=kubernetes&logoColor=white" alt="Kubernetes Release LoongArch64 龙芯架构发行版"></p>
 
 Build [Kubernetes](https://github.com/kubernetes/kubernetes) binaries and Docker images for the **LoongArch64 (loong64)** architecture via CI/CD.
 
