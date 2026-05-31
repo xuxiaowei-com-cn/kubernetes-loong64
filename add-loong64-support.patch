@@ -1,18 +1,20 @@
 diff --git a/build/common.sh b/build/common.sh
-index 6402b1219ea..9a13d3f6ece 100755
+index 6402b1219ea..8caca30d7cc 100755
 --- a/build/common.sh
 +++ b/build/common.sh
-@@ -77,8 +77,8 @@ readonly REMOTE_OUTPUT_BINPATH="${REMOTE_OUTPUT_SUBPATH}/bin"
+@@ -77,9 +77,9 @@ readonly REMOTE_OUTPUT_BINPATH="${REMOTE_OUTPUT_SUBPATH}/bin"
  readonly REMOTE_OUTPUT_GOPATH="${REMOTE_OUTPUT_SUBPATH}/go"
  
  # These are the default versions (image tags) for their respective base images.
 -readonly __default_distroless_iptables_version=v0.9.1
 -readonly __default_go_runner_version=v2.4.0-go1.26.2-bookworm.0
+-readonly __default_setcap_version=bookworm-v1.0.6
 +readonly __default_distroless_iptables_version=v0.21.1
 +readonly __default_go_runner_version=v0.21.1
- readonly __default_setcap_version=bookworm-v1.0.6
++readonly __default_setcap_version=v0.21.1
  
  # The default image for all binaries which are dynamically linked.
+ # Includes everything that is required by kube-proxy, which uses it
 diff --git a/build/pause/Makefile b/build/pause/Makefile
 index c2446d8cd6b..b022442e37e 100644
 --- a/build/pause/Makefile
