@@ -10,6 +10,8 @@ Build [Kubernetes](https://github.com/kubernetes/kubernetes) binaries and Docker
 
 A GitHub Actions workflow clones the specified Kubernetes version, applies a patch to enable loong64 compilation, and cross-compiles with `gcc-loongarch64-linux-gnu` in a Debian 13 container. Target platform: `linux/loong64`.
 
+See [Discussion #6 — Why Use container: debian:13?](https://github.com/orgs/kubernetes-loong64/discussions/6) for the rationale behind the Debian 13 container choice.
+
 ## Branch naming
 
 Create a branch named `loong64/<kubernetes-version>` (e.g. `loong64/v1.36.1`) to trigger a build.
