@@ -14,11 +14,11 @@ See [Discussion #6 — Why Use container: debian:13?](https://github.com/orgs/ku
 
 ## Branch naming
 
-Create a branch named `loong64/<kubernetes-version>` (e.g. `loong64/v1.36.1`) to trigger a build.
+Push a branch named `loong64-<kubernetes-version>` (e.g. `loong64-v1.36.1`) to trigger a build.
 
 ## [Release](https://github.com/xuxiaowei-com-cn/kubernetes-loong64/releases)
 
-Push a tag matching `release-loong64/<kubernetes-version>/<sequence>` (e.g. `release-loong64/v1.36.1/1-alpha.1`) to publish a GitHub Release with the built binaries.
+Push a tag matching `release-loong64-<kubernetes-version>+<sequence>` (e.g. `release-loong64-v1.36.1+1-alpha.1`) to publish a GitHub Release with the built binaries and Docker images.
 
 The suffix in the sequence indicates the release stage:
 
@@ -28,6 +28,61 @@ The suffix in the sequence indicates the release stage:
 | `beta`  | Public beta   |
 | `rc`    | Pre-release   |
 | (none)  | Stable        |
+
+## Release artifacts
+
+Each release includes the following files:
+
+| File                          | Type          |
+|-------------------------------|---------------|
+| `apiextensions-apiserver`     | Binary        |
+| `ginkgo`                      | Binary        |
+| `go-runner`                   | Binary        |
+| `kubeadm`                     | Binary        |
+| `kube-aggregator`             | Binary        |
+| `kube-apiserver`              | Binary        |
+| `kube-controller-manager`     | Binary        |
+| `kubectl`                     | Binary        |
+| `kubectl-convert`             | Binary        |
+| `kubelet`                     | Binary        |
+| `kube-log-runner`             | Binary        |
+| `kubemark`                    | Binary        |
+| `kube-proxy`                  | Binary        |
+| `kube-scheduler`              | Binary        |
+| `mounter`                     | Binary        |
+| `conformance-loong64.tar`     | Image tarball |
+| `kube-apiserver.tar`          | Image tarball |
+| `kube-controller-manager.tar` | Image tarball |
+| `kubectl.tar`                 | Image tarball |
+| `kube-proxy.tar`              | Image tarball |
+| `kube-scheduler.tar`          | Image tarball |
+| `pause-loong64.tar`           | Image tarball |
+
+Each file has a corresponding `.asc` detached GPG signature.
+
+## Docker images
+
+Docker images are pushed to:
+
+- [![kubernetesloong64/kube-apiserver](https://img.shields.io/docker/v/kubernetesloong64/kube-apiserver?sort=semver&arch=loong64&logo=docker&label=kubernetesloong64%2Fkube-apiserver)](https://hub.docker.com/r/kubernetesloong64/kube-apiserver/tags)
+- [![kubernetesloong64/kube-controller-manager](https://img.shields.io/docker/v/kubernetesloong64/kube-controller-manager?sort=semver&arch=loong64&logo=docker&label=kubernetesloong64%2Fkube-controller-manager)](https://hub.docker.com/r/kubernetesloong64/kube-controller-manager/tags)
+- [![kubernetesloong64/kube-scheduler](https://img.shields.io/docker/v/kubernetesloong64/kube-scheduler?sort=semver&arch=loong64&logo=docker&label=kubernetesloong64%2Fkube-scheduler)](https://hub.docker.com/r/kubernetesloong64/kube-scheduler/tags)
+- [![kubernetesloong64/kube-proxy](https://img.shields.io/docker/v/kubernetesloong64/kube-proxy?sort=semver&arch=loong64&logo=docker&label=kubernetesloong64%2Fkube-proxy)](https://hub.docker.com/r/kubernetesloong64/kube-proxy/tags)
+- [![kubernetesloong64/kubectl](https://img.shields.io/docker/v/kubernetesloong64/kubectl?sort=semver&arch=loong64&logo=docker&label=kubernetesloong64%2Fkubectl)](https://hub.docker.com/r/kubernetesloong64/kubectl/tags)
+- [![kubernetesloong64/pause](https://img.shields.io/docker/v/kubernetesloong64/pause?sort=semver&arch=loong64&logo=docker&label=kubernetesloong64%2Fpause)](https://hub.docker.com/r/kubernetesloong64/pause/tags)
+- [![kubernetesloong64/conformance](https://img.shields.io/docker/v/kubernetesloong64/conformance?sort=semver&arch=loong64&logo=docker&label=kubernetesloong64%2Fconformance)](https://hub.docker.com/r/kubernetesloong64/conformance/tags)
+
+| Image                                       | Description             |
+|---------------------------------------------|-------------------------|
+| `kubernetesloong64/kube-apiserver`          | kube-apiserver          |
+| `kubernetesloong64/kube-controller-manager` | kube-controller-manager |
+| `kubernetesloong64/kube-scheduler`          | kube-scheduler          |
+| `kubernetesloong64/kube-proxy`              | kube-proxy              |
+| `kubernetesloong64/kubectl`                 | kubectl                 |
+| `kubernetesloong64/pause`                   | Pause container         |
+| `kubernetesloong64/conformance`             | Conformance             |
+
+All images are available under [kubernetesloong64](https://hub.docker.com/u/kubernetesloong64).
 
 ## Verify releases
 
