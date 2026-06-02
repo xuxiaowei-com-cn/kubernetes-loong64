@@ -9,6 +9,9 @@ on:
     branches:
       - loong64-*
 
+env:
+  KUBE_BASE_IMAGE_REGISTRY: ${{ vars.KUBE_BASE_IMAGE_REGISTRY || 'kubernetesloong64' }}
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -16,14 +19,12 @@ jobs:
     outputs:
       PAUSE_TAG: ${{ steps.build-pause.outputs.PAUSE_TAG }}
       DOCKER_TAG: ${{ steps.extract.outputs.DOCKER_TAG }}
-      DOCKER_TAG_K8S: ${{ steps.extract.outputs.DOCKER_TAG_K8S }}
       IS_STABLE: ${{ steps.extract.outputs.IS_STABLE }}
     permissions:
       contents: read
     env:
       KUBE_BUILD_PLATFORMS: linux/loong64
       KUBE_RELEASE_RUN_TESTS: n
-      KUBE_BASE_IMAGE_REGISTRY: ${{ vars.KUBE_BASE_IMAGE_REGISTRY || 'kubernetesloong64' }}
       BASE_IMAGE_VERSION: v0.21.1
     steps:
       - name: Checkout
@@ -51,10 +52,7 @@ jobs:
           echo "KUBERNETES_BRANCH=$KUBERNETES_BRANCH" >> ${GITHUB_ENV}
           DOCKER_TAG=$(echo $PROJECT_KUBERNETES_VERSION | sed 's/+/-/g')
           echo "DOCKER_TAG=$DOCKER_TAG"
-          DOCKER_TAG_K8S=$(echo $PROJECT_KUBERNETES_VERSION | sed 's/+.*//')
-          echo "DOCKER_TAG_K8S=$DOCKER_TAG_K8S"
           echo "DOCKER_TAG=$DOCKER_TAG" >> ${GITHUB_ENV}
-          echo "DOCKER_TAG_K8S=$DOCKER_TAG_K8S" >> ${GITHUB_ENV}
           if echo "$PROJECT_KUBERNETES_VERSION" | grep -qE '[+].*(alpha|beta|rc)'; then
             IS_STABLE=false
           else
@@ -62,7 +60,6 @@ jobs:
           fi
           echo "IS_STABLE=$IS_STABLE"
           echo "DOCKER_TAG=$DOCKER_TAG" >> ${GITHUB_OUTPUT}
-          echo "DOCKER_TAG_K8S=$DOCKER_TAG_K8S" >> ${GITHUB_OUTPUT}
           echo "IS_STABLE=$IS_STABLE" >> ${GITHUB_OUTPUT}
       - name: Extract CPU architecture
         run: |
@@ -260,6 +257,34 @@ jobs:
           path: loong64-artifacts
       - name: List downloaded files
         run: find . -type f
+      - name: Login to Docker
+        uses: docker/login-action@650006c6eb7dba73a995cc03b0b2d7f5ca915bee # v4.2.0
+        with:
+          username: ${{ vars.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+      - name: Load and push Docker image
+        env:
+          DOCKER_TAG: ${{ needs.build.outputs.DOCKER_TAG }}
+        run: |
+          echo "=== Before load ==="
+          docker images
+          echo "=== Loading images ==="
+          find loong64-artifacts -type f -name '*.tar' | while read -r tarball; do
+            echo "--- Loading $tarball ---"
+            docker load -i "$tarball"
+          done
+          echo "=== After load ==="
+          docker images
+          echo "=== Tag and push ==="
+          for image in registry.k8s.io/pause registry.k8s.io/kubectl-loong64 registry.k8s.io/kube-controller-manager-loong64 registry.k8s.io/kube-scheduler-loong64 registry.k8s.io/conformance-loong64 registry.k8s.io/kube-apiserver-loong64 registry.k8s.io/kube-proxy-loong64; do
+            SRC=$(docker images ${image} --format "{{.Repository}}:{{.Tag}}")
+            DST=${{ env.KUBE_BASE_IMAGE_REGISTRY }}/$(echo $image | awk -F/ '{print $NF}' | awk -F'-loong64' '{print $1}'):$(docker images ${image} --format "{{.Tag}}")
+            echo "--- Tag $SRC -> $DST ---"
+            docker tag "$SRC" "$DST"
+            # docker push "$DST"
+          done
+          echo "=== After push ==="
+          docker images
       - name: Import GPG key
         run: |
           echo "${{ secrets.GPG_PRIVATE_KEY_BASE64 }}" | base64 -d | gpg --batch --import > /dev/null
@@ -271,77 +296,137 @@ jobs:
             echo "Signed: $file"
             gpg --verify "$file".asc "$file"
           done
-      - name: Package signatures
-        run: |
-          mkdir signatures
-          find loong64-artifacts -name '*.asc' -exec mv {} signatures \;
-          find signatures -name '*.asc' | tar -czf loong64-artifacts/signatures.tar.gz -T -
       - name: List Release files
         run: find loong64-artifacts -type f
-      - name: Generate body
-        id: generate-body
+      - name: Generate release body
+        env:
+          BASE_URL: https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}
+          DOCKER_TAG: ${{ needs.build.outputs.DOCKER_TAG }}
         run: |
-          if [ "${{ github.event_name }}" = "pull_request" ]; then
-            REF=${{ github.base_ref }}
-          else
-            REF=${{ github.ref_name }}
-          fi
-          KUBERNETES_BRANCH=$(echo $REF | awk -F'/' '{print $2}')
-          echo "KUBERNETES_BRANCH=$KUBERNETES_BRANCH"
-          PAUSE_TAG=${{ needs.build.outputs.PAUSE_TAG }}
-          echo "PAUSE_TAG=$PAUSE_TAG"
-          PAUSE_TAG_SHORT=$(echo "$PAUSE_TAG" | sed 's/-linux-loong64$//')
-          echo "PAUSE_TAG_SHORT=$PAUSE_TAG_SHORT"
-          URL="${{ github.server_url }}/${{ github.repository }}/releases/download/${{ github.ref_name }}"
-          {
-            echo '**Docker Images**'
-            echo
-            echo '```shell'
-            find loong64-artifacts -type f -name '*.tar' ! -name '*.tar.gz' | sort | sed "s|.*/|curl -LO ${URL}/|"
-            echo '```'
-            echo
-            echo '**Usage Docker Images**'
-            echo
-            echo '```shell'
-            echo '# Check current images in containerd before importing:'
-            echo "ctr -n k8s.io i ls | grep -vE '^sha256:' | awk '{print \$1}'"
-            echo '# After downloading the Docker tar files, import into containerd:'
-            find loong64-artifacts -type f -name '*.tar' ! -name '*.tar.gz' | sort | sed 's|.*/|ctr -n k8s.io i import |'
-            echo '# List images after importing to find the loong64 image names:'
-            echo "ctr -n k8s.io i ls | grep -vE '^sha256:' | awk '{print \$1}'"
-            echo '# Tag the loong64 images to the standard Kubernetes registry names:'
-            echo "ctr -n k8s.io i tag registry.k8s.io/kube-apiserver-loong64:${KUBERNETES_BRANCH}-dirty registry.k8s.io/kube-apiserver:${KUBERNETES_BRANCH}"
-            echo "ctr -n k8s.io i tag registry.k8s.io/kube-controller-manager-loong64:${KUBERNETES_BRANCH}-dirty registry.k8s.io/kube-controller-manager:${KUBERNETES_BRANCH}"
-            echo "ctr -n k8s.io i tag registry.k8s.io/kube-scheduler-loong64:${KUBERNETES_BRANCH}-dirty registry.k8s.io/kube-scheduler:${KUBERNETES_BRANCH}"
-            echo "ctr -n k8s.io i tag registry.k8s.io/kube-proxy-loong64:${KUBERNETES_BRANCH}-dirty registry.k8s.io/kube-proxy:${KUBERNETES_BRANCH}"
-            echo "ctr -n k8s.io i tag registry.k8s.io/kubectl-loong64:${KUBERNETES_BRANCH}-dirty registry.k8s.io/kubectl:${KUBERNETES_BRANCH}"
-            echo "ctr -n k8s.io i tag registry.k8s.io/pause:${PAUSE_TAG} registry.k8s.io/pause:${PAUSE_TAG_SHORT}"
-            echo '# List images after tagging to verify:'
-            echo "ctr -n k8s.io i ls | grep -vE '^sha256:' | awk '{print \$1}'"
-            echo '```'
-            echo
-            echo '**Binary**'
-            echo
-            echo '```shell'
-            find loong64-artifacts -type f ! -name '*.tar' ! -name '*.tar.gz' | sort | sed "s|.*/|curl -LO ${URL}/|"
-            echo '```'
-            echo
-            echo '**Signatures**'
-            echo
-            echo '```shell'
-            find loong64-artifacts -type f -name '*.tar.gz' | sort | sed "s|.*/|curl -LO ${URL}/|"
-            echo '```'
-          } > /tmp/release-body.md
-          echo '--- RELEASE_BODY preview ---'
-          cat /tmp/release-body.md
-          echo '--- end preview ---'
-          echo "RELEASE_BODY<<EOF" >> $GITHUB_OUTPUT
-          cat /tmp/release-body.md >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
+          cat > release-body.md <<'BODYEOF'
+          ## Artifacts
+
+          | File                          | Download                                                                       |
+          |-------------------------------|--------------------------------------------------------------------------------|
+          | `apiextensions-apiserver`     | [apiextensions-apiserver](${{ env.BASE_URL }}/apiextensions-apiserver)         |
+          | `conformance-loong64.tar`     | [conformance-loong64.tar](${{ env.BASE_URL }}/conformance-loong64.tar)         |
+          | `ginkgo`                      | [ginkgo](${{ env.BASE_URL }}/ginkgo)                                           |
+          | `go-runner`                   | [go-runner](${{ env.BASE_URL }}/go-runner)                                     |
+          | `kubeadm`                     | [kubeadm](${{ env.BASE_URL }}/kubeadm)                                         |
+          | `kube-aggregator`             | [kube-aggregator](${{ env.BASE_URL }}/kube-aggregator)                         |
+          | `kube-apiserver.tar`          | [kube-apiserver.tar](${{ env.BASE_URL }}/kube-apiserver.tar)                   |
+          | `kube-apiserver`              | [kube-apiserver](${{ env.BASE_URL }}/kube-apiserver)                           |
+          | `kube-controller-manager.tar` | [kube-controller-manager.tar](${{ env.BASE_URL }}/kube-controller-manager.tar) |
+          | `kube-controller-manager`     | [kube-controller-manager](${{ env.BASE_URL }}/kube-controller-manager)         |
+          | `kubectl.tar`                 | [kubectl.tar](${{ env.BASE_URL }}/kubectl.tar)                                 |
+          | `kubectl`                     | [kubectl](${{ env.BASE_URL }}/kubectl)                                         |
+          | `kubectl-convert`             | [kubectl-convert](${{ env.BASE_URL }}/kubectl-convert)                         |
+          | `kubelet`                     | [kubelet](${{ env.BASE_URL }}/kubelet)                                         |
+          | `kube-log-runner`             | [kube-log-runner](${{ env.BASE_URL }}/kube-log-runner)                         |
+          | `kubemark`                    | [kubemark](${{ env.BASE_URL }}/kubemark)                                       |
+          | `kube-proxy.tar`              | [kube-proxy.tar](${{ env.BASE_URL }}/kube-proxy.tar)                           |
+          | `kube-proxy`                  | [kube-proxy](${{ env.BASE_URL }}/kube-proxy)                                   |
+          | `kube-scheduler.tar`          | [kube-scheduler.tar](${{ env.BASE_URL }}/kube-scheduler.tar)                   |
+          | `kube-scheduler`              | [kube-scheduler](${{ env.BASE_URL }}/kube-scheduler)                           |
+          | `mounter`                     | [mounter](${{ env.BASE_URL }}/mounter)                                         |
+          
+          Each file has a corresponding `.asc` detached GPG signature.
+
+          ```shell
+          # Binaries
+          curl -LO ${{ env.BASE_URL }}/apiextensions-apiserver
+          curl -LO ${{ env.BASE_URL }}/apiextensions-apiserver.asc
+          curl -LO ${{ env.BASE_URL }}/ginkgo
+          curl -LO ${{ env.BASE_URL }}/ginkgo.asc
+          curl -LO ${{ env.BASE_URL }}/go-runner
+          curl -LO ${{ env.BASE_URL }}/go-runner.asc
+          curl -LO ${{ env.BASE_URL }}/kubeadm
+          curl -LO ${{ env.BASE_URL }}/kubeadm.asc
+          curl -LO ${{ env.BASE_URL }}/kube-aggregator
+          curl -LO ${{ env.BASE_URL }}/kube-aggregator.asc
+          curl -LO ${{ env.BASE_URL }}/kube-apiserver
+          curl -LO ${{ env.BASE_URL }}/kube-apiserver.asc
+          curl -LO ${{ env.BASE_URL }}/kube-controller-manager
+          curl -LO ${{ env.BASE_URL }}/kube-controller-manager.asc
+          curl -LO ${{ env.BASE_URL }}/kubectl
+          curl -LO ${{ env.BASE_URL }}/kubectl.asc
+          curl -LO ${{ env.BASE_URL }}/kubectl-convert
+          curl -LO ${{ env.BASE_URL }}/kubectl-convert.asc
+          curl -LO ${{ env.BASE_URL }}/kubelet
+          curl -LO ${{ env.BASE_URL }}/kubelet.asc
+          curl -LO ${{ env.BASE_URL }}/kube-log-runner
+          curl -LO ${{ env.BASE_URL }}/kube-log-runner.asc
+          curl -LO ${{ env.BASE_URL }}/kubemark
+          curl -LO ${{ env.BASE_URL }}/kubemark.asc
+          curl -LO ${{ env.BASE_URL }}/kube-proxy
+          curl -LO ${{ env.BASE_URL }}/kube-proxy.asc
+          curl -LO ${{ env.BASE_URL }}/kube-scheduler
+          curl -LO ${{ env.BASE_URL }}/kube-scheduler.asc
+          curl -LO ${{ env.BASE_URL }}/mounter
+          curl -LO ${{ env.BASE_URL }}/mounter.asc
+          # Images
+          curl -LO ${{ env.BASE_URL }}/conformance-loong64.tar
+          curl -LO ${{ env.BASE_URL }}/conformance-loong64.tar.asc
+          curl -LO ${{ env.BASE_URL }}/kube-apiserver.tar
+          curl -LO ${{ env.BASE_URL }}/kube-apiserver.tar.asc
+          curl -LO ${{ env.BASE_URL }}/kube-controller-manager.tar
+          curl -LO ${{ env.BASE_URL }}/kube-controller-manager.tar.asc
+          curl -LO ${{ env.BASE_URL }}/kubectl.tar
+          curl -LO ${{ env.BASE_URL }}/kubectl.tar.asc
+          curl -LO ${{ env.BASE_URL }}/kube-proxy.tar
+          curl -LO ${{ env.BASE_URL }}/kube-proxy.tar.asc
+          curl -LO ${{ env.BASE_URL }}/kube-scheduler.tar
+          curl -LO ${{ env.BASE_URL }}/kube-scheduler.tar.asc
+          ```
+
+          ## Docker image
+
+          ```
+          kubernetesloong64/conformance:${{ env.DOCKER_TAG }}
+          kubernetesloong64/kube-apiserver:${{ env.DOCKER_TAG }}
+          kubernetesloong64/kube-controller-manager:${{ env.DOCKER_TAG }}
+          kubernetesloong64/kubectl:${{ env.DOCKER_TAG }}
+          kubernetesloong64/kube-proxy:${{ env.DOCKER_TAG }}
+          kubernetesloong64/kube-scheduler:${{ env.DOCKER_TAG }}
+          ```
+
+          Download and load the image:
+
+          ```shell
+          curl -LO ${{ env.BASE_URL }}/conformance-loong64.tar
+          curl -LO ${{ env.BASE_URL }}/conformance-loong64.tar.asc
+          curl -LO ${{ env.BASE_URL }}/kube-apiserver.tar
+          curl -LO ${{ env.BASE_URL }}/kube-apiserver.tar.asc
+          curl -LO ${{ env.BASE_URL }}/kube-controller-manager.tar
+          curl -LO ${{ env.BASE_URL }}/kube-controller-manager.tar.asc
+          curl -LO ${{ env.BASE_URL }}/kubectl.tar
+          curl -LO ${{ env.BASE_URL }}/kubectl.tar.asc
+          curl -LO ${{ env.BASE_URL }}/kube-proxy.tar
+          curl -LO ${{ env.BASE_URL }}/kube-proxy.tar.asc
+          curl -LO ${{ env.BASE_URL }}/kube-scheduler.tar
+          curl -LO ${{ env.BASE_URL }}/kube-scheduler.tar.asc
+          docker load -i conformance-loong64.tar
+          docker load -i kube-apiserver.tar
+          docker load -i kube-controller-manager.tar
+          docker load -i kubectl.tar
+          docker load -i kube-proxy.tar
+          docker load -i kube-scheduler.tar
+          ```
+
+          ## Verify signatures
+
+          ```shell
+          gpg --keyserver keys.openpgp.org --recv-keys FCF8724722CCBF9F51B1FBE376532BE7E3013105
+          echo "FCF8724722CCBF9F51B1FBE376532BE7E3013105:6:" | gpg --import-ownertrust
+          gpg --verify <file>.asc <file>
+          ```
+          BODYEOF
       - name: Create Release
         uses: softprops/action-gh-release@b4309332981a82ec1c5618f44dd2e27cc8bfbfda # v3.0.0
         with:
           name: ${{ github.ref_name }}
-          body: ${{ steps.generate-body.outputs.RELEASE_BODY }}
+          body_path: release-body.md
+          prerelease: ${{ env.IS_STABLE == 'false' }}
+          make_latest: ${{ env.IS_STABLE == 'true' && 'legacy' || 'false' }}
           files: |
             loong64-artifacts/**
