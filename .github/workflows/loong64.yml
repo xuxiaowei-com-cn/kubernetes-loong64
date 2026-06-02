@@ -151,7 +151,13 @@ jobs:
           path: kubernetes/build/pause/pause-loong64.tar
       - name: Build Kubernetes
         working-directory: kubernetes
-        run: make release-in-a-container
+        run: |
+          echo "=== Before Kubernetes build ==="
+          docker images
+          echo "=== Starting Kubernetes build ==="
+          make release-in-a-container
+          echo "=== After Kubernetes build ==="
+          docker images
       - name: List build output
         working-directory: kubernetes
         run: find _output \( -path '_output/local/go' -o -path '_output/local/.gimme' -o -path '_output/dockerized/.gimme' -o -path '_output/dockerized/go/cache' -o -path '*LICENSES*' \) -prune -o -type f -exec ls -lh {} \;
