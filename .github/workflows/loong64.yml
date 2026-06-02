@@ -246,6 +246,7 @@ jobs:
     env:
       DOCKER_TAG: ${{ needs.build.outputs.DOCKER_TAG }}
       DOCKER_TAG_NUM: ${{ needs.build.outputs.DOCKER_TAG_NUM }}
+      IS_STABLE: ${{ needs.build.outputs.IS_STABLE }}
     steps:
       - name: Download binaries
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
@@ -335,6 +336,7 @@ jobs:
           | `kube-scheduler.tar`          | [kube-scheduler.tar](${{ env.BASE_URL }}/kube-scheduler.tar)                   |
           | `kube-scheduler`              | [kube-scheduler](${{ env.BASE_URL }}/kube-scheduler)                           |
           | `mounter`                     | [mounter](${{ env.BASE_URL }}/mounter)                                         |
+          | `pause-loong64.tar`           | [pause-loong64.tar](${{ env.BASE_URL }}/pause-loong64.tar)                     |
           
           Each file has a corresponding `.asc` detached GPG signature.
 
@@ -371,6 +373,8 @@ jobs:
           curl -LO ${{ env.BASE_URL }}/mounter
           curl -LO ${{ env.BASE_URL }}/mounter.asc
           # Images
+          curl -LO ${{ env.BASE_URL }}/pause-loong64.tar
+          curl -LO ${{ env.BASE_URL }}/pause-loong64.tar.asc
           curl -LO ${{ env.BASE_URL }}/conformance-loong64.tar
           curl -LO ${{ env.BASE_URL }}/conformance-loong64.tar.asc
           curl -LO ${{ env.BASE_URL }}/kube-apiserver.tar
@@ -388,6 +392,7 @@ jobs:
           ## Docker image
 
           ```
+          kubernetesloong64/pause:${{ env.DOCKER_TAG }}
           kubernetesloong64/conformance:${{ env.DOCKER_TAG }}
           kubernetesloong64/kube-apiserver:${{ env.DOCKER_TAG }}
           kubernetesloong64/kube-controller-manager:${{ env.DOCKER_TAG }}
@@ -399,6 +404,8 @@ jobs:
           Download and load the image:
 
           ```shell
+          curl -LO ${{ env.BASE_URL }}/pause-loong64.tar
+          curl -LO ${{ env.BASE_URL }}/pause-loong64.tar.asc
           curl -LO ${{ env.BASE_URL }}/conformance-loong64.tar
           curl -LO ${{ env.BASE_URL }}/conformance-loong64.tar.asc
           curl -LO ${{ env.BASE_URL }}/kube-apiserver.tar
@@ -411,6 +418,7 @@ jobs:
           curl -LO ${{ env.BASE_URL }}/kube-proxy.tar.asc
           curl -LO ${{ env.BASE_URL }}/kube-scheduler.tar
           curl -LO ${{ env.BASE_URL }}/kube-scheduler.tar.asc
+          docker load -i pause-loong64.tar
           docker load -i conformance-loong64.tar
           docker load -i kube-apiserver.tar
           docker load -i kube-controller-manager.tar
