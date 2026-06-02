@@ -19,6 +19,7 @@ jobs:
     outputs:
       PAUSE_TAG: ${{ steps.build-pause.outputs.PAUSE_TAG }}
       DOCKER_TAG: ${{ steps.extract.outputs.DOCKER_TAG }}
+      DOCKER_TAG_NUM: ${{ steps.extract.outputs.DOCKER_TAG_NUM }}
       IS_STABLE: ${{ steps.extract.outputs.IS_STABLE }}
     permissions:
       contents: read
@@ -53,6 +54,8 @@ jobs:
           DOCKER_TAG=$(echo $PROJECT_KUBERNETES_VERSION | sed 's/+/-/g')
           echo "DOCKER_TAG=$DOCKER_TAG"
           echo "DOCKER_TAG=$DOCKER_TAG" >> ${GITHUB_ENV}
+          DOCKER_TAG_NUM=$(echo $PROJECT_KUBERNETES_VERSION | awk -F'+' '{print $2}')
+          echo "DOCKER_TAG_NUM=$DOCKER_TAG_NUM"
           if echo "$PROJECT_KUBERNETES_VERSION" | grep -qE '[+].*(alpha|beta|rc)'; then
             IS_STABLE=false
           else
@@ -60,6 +63,7 @@ jobs:
           fi
           echo "IS_STABLE=$IS_STABLE"
           echo "DOCKER_TAG=$DOCKER_TAG" >> ${GITHUB_OUTPUT}
+          echo "DOCKER_TAG_NUM=$DOCKER_TAG_NUM" >> ${GITHUB_OUTPUT}
           echo "IS_STABLE=$IS_STABLE" >> ${GITHUB_OUTPUT}
       - name: Extract CPU architecture
         run: |
@@ -118,12 +122,12 @@ jobs:
           USE_LOCAL_CC: 1
         run: |
           echo "=== Before Docker build ==="
-          docker images
+          docker images --format "table {{.Repository}}\t{{.Tag}}\t{{.ID}}\t{{.CreatedSince}}\t{{.Size}}" | (read -r header; echo "$header"; tail -n +2 | sort -k1,1 -k2,2)
           echo "=== Starting Docker build ==="
           ls -lha
           make container
           echo "=== After build ==="
-          docker images
+          docker images --format "table {{.Repository}}\t{{.Tag}}\t{{.ID}}\t{{.CreatedSince}}\t{{.Size}}" | (read -r header; echo "$header"; tail -n +2 | sort -k1,1 -k2,2)
           PAUSE_TAG=$(docker images registry.k8s.io/pause --format "{{.Tag}}")
           echo "PAUSE_TAG=$PAUSE_TAG"
           echo "PAUSE_TAG=$PAUSE_TAG" >> $GITHUB_OUTPUT
@@ -150,11 +154,11 @@ jobs:
         working-directory: kubernetes
         run: |
           echo "=== Before Kubernetes build ==="
-          docker images
+          docker images --format "table {{.Repository}}\t{{.Tag}}\t{{.ID}}\t{{.CreatedSince}}\t{{.Size}}" | (read -r header; echo "$header"; tail -n +2 | sort -k1,1 -k2,2)
           echo "=== Starting Kubernetes build ==="
           make release-in-a-container
           echo "=== After Kubernetes build ==="
-          docker images
+          docker images --format "table {{.Repository}}\t{{.Tag}}\t{{.ID}}\t{{.CreatedSince}}\t{{.Size}}" | (read -r header; echo "$header"; tail -n +2 | sort -k1,1 -k2,2)
       - name: List build output
         working-directory: kubernetes
         run: find _output \( -path '_output/local/go' -o -path '_output/local/.gimme' -o -path '_output/dockerized/.gimme' -o -path '_output/dockerized/go/cache' -o -path '*LICENSES*' \) -prune -o -type f -exec ls -lh {} \;
@@ -239,6 +243,9 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+    env:
+      DOCKER_TAG: ${{ needs.build.outputs.DOCKER_TAG }}
+      DOCKER_TAG_NUM: ${{ needs.build.outputs.DOCKER_TAG_NUM }}
     steps:
       - name: Download binaries
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
@@ -263,28 +270,28 @@ jobs:
           username: ${{ vars.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
       - name: Load and push Docker image
-        env:
-          DOCKER_TAG: ${{ needs.build.outputs.DOCKER_TAG }}
         run: |
           echo "=== Before load ==="
-          docker images
+          docker images --format "table {{.Repository}}\t{{.Tag}}\t{{.ID}}\t{{.CreatedSince}}\t{{.Size}}" | (read -r header; echo "$header"; tail -n +2 | sort -k1,1 -k2,2)
           echo "=== Loading images ==="
           find loong64-artifacts -type f -name '*.tar' | while read -r tarball; do
             echo "--- Loading $tarball ---"
             docker load -i "$tarball"
           done
           echo "=== After load ==="
-          docker images
+          docker images --format "table {{.Repository}}\t{{.Tag}}\t{{.ID}}\t{{.CreatedSince}}\t{{.Size}}" | (read -r header; echo "$header"; tail -n +2 | sort -k1,1 -k2,2)
           echo "=== Tag and push ==="
           for image in registry.k8s.io/pause registry.k8s.io/kubectl-loong64 registry.k8s.io/kube-controller-manager-loong64 registry.k8s.io/kube-scheduler-loong64 registry.k8s.io/conformance-loong64 registry.k8s.io/kube-apiserver-loong64 registry.k8s.io/kube-proxy-loong64; do
             SRC=$(docker images ${image} --format "{{.Repository}}:{{.Tag}}")
-            DST=${{ env.KUBE_BASE_IMAGE_REGISTRY }}/$(echo $image | awk -F/ '{print $NF}' | awk -F'-loong64' '{print $1}'):$(docker images ${image} --format "{{.Tag}}")
+            DST=${{ env.KUBE_BASE_IMAGE_REGISTRY }}/$(echo $image | awk -F/ '{print $NF}' | awk -F'-loong64' '{print $1}'):$(echo $(docker images ${image} --format "{{.Tag}}") | awk -F'-linux' '{print $1}')
             echo "--- Tag $SRC -> $DST ---"
             docker tag "$SRC" "$DST"
-            # docker push "$DST"
+            docker tag "$SRC" "$DST"-${{ env.DOCKER_TAG_NUM }}
+            docker push "$DST"
+            docker push "$DST"-${{ env.DOCKER_TAG_NUM }}
           done
           echo "=== After push ==="
-          docker images
+          docker images --format "table {{.Repository}}\t{{.Tag}}\t{{.ID}}\t{{.CreatedSince}}\t{{.Size}}" | (read -r header; echo "$header"; tail -n +2 | sort -k1,1 -k2,2)
       - name: Import GPG key
         run: |
           echo "${{ secrets.GPG_PRIVATE_KEY_BASE64 }}" | base64 -d | gpg --batch --import > /dev/null
@@ -301,7 +308,6 @@ jobs:
       - name: Generate release body
         env:
           BASE_URL: https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}
-          DOCKER_TAG: ${{ needs.build.outputs.DOCKER_TAG }}
         run: |
           cat > release-body.md <<'BODYEOF'
           ## Artifacts
