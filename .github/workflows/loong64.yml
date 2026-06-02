@@ -2,12 +2,12 @@ name: loong64
 on:
   push:
     branches:
-      - loong64/*
+      - loong64-*
     tags:
-      - release-loong64/*/*
+      - release-loong64-*
   pull_request:
     branches:
-      - loong64/*
+      - loong64-*
 
 jobs:
   build:
@@ -15,6 +15,9 @@ jobs:
     container: debian:13
     outputs:
       PAUSE_TAG: ${{ steps.build-pause.outputs.PAUSE_TAG }}
+      DOCKER_TAG: ${{ steps.extract.outputs.DOCKER_TAG }}
+      DOCKER_TAG_K8S: ${{ steps.extract.outputs.DOCKER_TAG_K8S }}
+      IS_STABLE: ${{ steps.extract.outputs.IS_STABLE }}
     permissions:
       contents: read
     env:
@@ -33,15 +36,34 @@ jobs:
             echo ${{ github.ref_name }}
           fi
       - name: Extract Kubernetes branch
+        id: extract
         run: |
           if [ "${{ github.event_name }}" = "pull_request" ]; then
             REF=${{ github.base_ref }}
           else
             REF=${{ github.ref_name }}
           fi
-          KUBERNETES_BRANCH=$(echo $REF | awk -F'/' '{print $2}')
+          echo "REF=$REF"
+          PROJECT_KUBERNETES_VERSION=$(echo $REF | awk -F'loong64-' '{print $2}')
+          echo "PROJECT_KUBERNETES_VERSION=$PROJECT_KUBERNETES_VERSION"
+          KUBERNETES_BRANCH=$(echo $PROJECT_KUBERNETES_VERSION | sed 's/+.*//')
           echo "KUBERNETES_BRANCH=$KUBERNETES_BRANCH"
           echo "KUBERNETES_BRANCH=$KUBERNETES_BRANCH" >> ${GITHUB_ENV}
+          DOCKER_TAG=$(echo $PROJECT_KUBERNETES_VERSION | sed 's/+/-/g')
+          echo "DOCKER_TAG=$DOCKER_TAG"
+          DOCKER_TAG_K8S=$(echo $PROJECT_KUBERNETES_VERSION | sed 's/+.*//')
+          echo "DOCKER_TAG_K8S=$DOCKER_TAG_K8S"
+          echo "DOCKER_TAG=$DOCKER_TAG" >> ${GITHUB_ENV}
+          echo "DOCKER_TAG_K8S=$DOCKER_TAG_K8S" >> ${GITHUB_ENV}
+          if echo "$PROJECT_KUBERNETES_VERSION" | grep -qE '[+].*(alpha|beta|rc)'; then
+            IS_STABLE=false
+          else
+            IS_STABLE=true
+          fi
+          echo "IS_STABLE=$IS_STABLE"
+          echo "DOCKER_TAG=$DOCKER_TAG" >> ${GITHUB_OUTPUT}
+          echo "DOCKER_TAG_K8S=$DOCKER_TAG_K8S" >> ${GITHUB_OUTPUT}
+          echo "IS_STABLE=$IS_STABLE" >> ${GITHUB_OUTPUT}
       - name: Extract CPU architecture
         run: |
           KUBE_CPU_ARCH="${KUBE_BUILD_PLATFORMS##*/}"
@@ -98,21 +120,35 @@ jobs:
           REGISTRY: registry.k8s.io
           USE_LOCAL_CC: 1
         run: |
+          echo "=== Before Docker build ==="
           docker images
+          echo "=== Starting Docker build ==="
           ls -lha
           make container
+          echo "=== After build ==="
           docker images
           PAUSE_TAG=$(docker images registry.k8s.io/pause --format "{{.Tag}}")
           echo "PAUSE_TAG=$PAUSE_TAG"
           echo "PAUSE_TAG=$PAUSE_TAG" >> $GITHUB_OUTPUT
-          docker save -o pause.tar $(docker images registry.k8s.io/pause --format "{{.ID}}")
-          ls -lha
-          tar -xOf pause.tar index.json || tar -xOf pause.tar manifest.json | jq
+          IMAGE_REF=$(docker images registry.k8s.io/pause --format "{{.Repository}}:{{.Tag}}")
+          echo "=== Saving $IMAGE_REF ==="
+          docker save -o pause-loong64.tar $IMAGE_REF
+          echo "=== Image tarball ==="
+          ls -lha pause-loong64.tar
+          echo "=== Manifest ==="
+          echo "--- repositories ---"
+          tar -xOf pause-loong64.tar repositories
+          echo "--- manifest.json ---"
+          tar -xOf pause-loong64.tar manifest.json | jq
+          echo "--- config ---"
+          tar -xOf pause-loong64.tar $(tar -xOf pause-loong64.tar manifest.json | jq -r '.[0].Config') | jq
+          echo "--- os, architecture ---"
+          tar -xOf pause-loong64.tar $(tar -xOf pause-loong64.tar manifest.json | jq -r '.[0].Config') | jq '{os, architecture}'
       - name: Upload pause image
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: kubernetes-loong64-pause
-          path: kubernetes/build/pause/pause.tar
+          path: kubernetes/build/pause/pause-loong64.tar
       - name: Build Kubernetes
         working-directory: kubernetes
         run: make release-in-a-container
@@ -151,14 +187,33 @@ jobs:
       - name: Inspect release image manifests
         working-directory: kubernetes
         run: |
-          if [ -d _output/release-images ]; then
-            tar -xOf _output/release-images/$KUBE_CPU_ARCH/kube-controller-manager.tar repositories || tar -xOf _output/release-images/$KUBE_CPU_ARCH/kube-controller-manager.tar manifest.json | jq
-            tar -xOf _output/release-images/$KUBE_CPU_ARCH/kube-scheduler.tar repositories || tar -xOf _output/release-images/$KUBE_CPU_ARCH/kube-scheduler.tar manifest.json | jq
-            tar -xOf _output/release-images/$KUBE_CPU_ARCH/kube-apiserver.tar repositories || tar -xOf _output/release-images/$KUBE_CPU_ARCH/kube-apiserver.tar manifest.json | jq
-            tar -xOf _output/release-images/$KUBE_CPU_ARCH/kubectl.tar repositories || tar -xOf _output/release-images/$KUBE_CPU_ARCH/kubectl.tar manifest.json | jq
-            tar -xOf _output/release-images/$KUBE_CPU_ARCH/conformance-$KUBE_CPU_ARCH.tar repositories || tar -xOf _output/release-images/$KUBE_CPU_ARCH/conformance-$KUBE_CPU_ARCH.tar manifest.json | jq
-            tar -xOf _output/release-images/$KUBE_CPU_ARCH/kube-proxy.tar repositories || tar -xOf _output/release-images/$KUBE_CPU_ARCH/kube-proxy.tar manifest.json | jq
+          if [ ! -d _output/release-images ]; then
+            echo "No release images directory found"
+            exit 0
           fi
+          inspect_tarball() {
+            TARBALL="$1"
+            if [ ! -f "$TARBALL" ]; then
+              echo "=== $TARBALL not found, skipping ==="
+              return
+            fi
+            echo "=== $TARBALL ==="
+            ls -lha "$TARBALL"
+            echo "--- repositories ---"
+            tar -xOf "$TARBALL" repositories
+            echo "--- manifest.json ---"
+            tar -xOf "$TARBALL" manifest.json | jq
+            echo "--- config ---"
+            tar -xOf "$TARBALL" $(tar -xOf "$TARBALL" manifest.json | jq -r '.[0].Config') | jq
+            echo "--- os, architecture ---"
+            tar -xOf "$TARBALL" $(tar -xOf "$TARBALL" manifest.json | jq -r '.[0].Config') | jq '{os, architecture}'
+          }
+          inspect_tarball _output/release-images/$KUBE_CPU_ARCH/kube-controller-manager.tar
+          inspect_tarball _output/release-images/$KUBE_CPU_ARCH/kube-scheduler.tar
+          inspect_tarball _output/release-images/$KUBE_CPU_ARCH/kube-apiserver.tar
+          inspect_tarball _output/release-images/$KUBE_CPU_ARCH/kubectl.tar
+          inspect_tarball _output/release-images/$KUBE_CPU_ARCH/conformance-$KUBE_CPU_ARCH.tar
+          inspect_tarball _output/release-images/$KUBE_CPU_ARCH/kube-proxy.tar
       - name: Upload binaries
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
