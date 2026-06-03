@@ -16,7 +16,7 @@ See [Discussion #6 — Why Use container: debian:13?](https://github.com/orgs/ku
 
 Push a branch named `loong64-<kubernetes-version>` (e.g. `loong64-v1.36.1`) to trigger a build.
 
-## [Release](https://github.com/xuxiaowei-com-cn/kubernetes-loong64/releases)
+## [Release](https://github.com/kubernetes-loong64/kubernetes-loong64/releases)
 
 Push a tag matching `release-loong64-<kubernetes-version>+<sequence>` (e.g. `release-loong64-v1.36.1+1-alpha.1`) to publish a GitHub Release with the built binaries and Docker images.
 
