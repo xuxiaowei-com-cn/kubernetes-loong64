@@ -19,7 +19,7 @@ jobs:
     outputs:
       PAUSE_TAG: ${{ steps.build-pause.outputs.PAUSE_TAG }}
       DOCKER_TAG: ${{ steps.extract.outputs.DOCKER_TAG }}
-      DOCKER_TAG_NUM: ${{ steps.extract.outputs.DOCKER_TAG_NUM }}
+      SERIAL: ${{ steps.extract.outputs.SERIAL }}
       IS_STABLE: ${{ steps.extract.outputs.IS_STABLE }}
     permissions:
       contents: read
@@ -46,24 +46,25 @@ jobs:
             REF=${{ github.ref_name }}
           fi
           echo "REF=$REF"
-          PROJECT_KUBERNETES_VERSION=$(echo $REF | awk -F'loong64-' '{print $2}')
-          echo "PROJECT_KUBERNETES_VERSION=$PROJECT_KUBERNETES_VERSION"
-          KUBERNETES_BRANCH=$(echo $PROJECT_KUBERNETES_VERSION | sed 's/+.*//')
+          RAW_VERSION=$(echo $REF | awk -F'loong64-' '{print $2}')
+          echo "RAW_VERSION=$RAW_VERSION"
+          KUBERNETES_BRANCH=$(echo $RAW_VERSION | awk -F'+' '{print $1}')
           echo "KUBERNETES_BRANCH=$KUBERNETES_BRANCH"
           echo "KUBERNETES_BRANCH=$KUBERNETES_BRANCH" >> ${GITHUB_ENV}
-          DOCKER_TAG=$(echo $PROJECT_KUBERNETES_VERSION | sed 's/+/-/g')
+          DOCKER_TAG=$(echo $RAW_VERSION | sed 's/+/-/g')
           echo "DOCKER_TAG=$DOCKER_TAG"
           echo "DOCKER_TAG=$DOCKER_TAG" >> ${GITHUB_ENV}
-          DOCKER_TAG_NUM=$(echo $PROJECT_KUBERNETES_VERSION | awk -F'+' '{print $2}')
-          echo "DOCKER_TAG_NUM=$DOCKER_TAG_NUM"
-          if echo "$PROJECT_KUBERNETES_VERSION" | grep -qE '[+].*(alpha|beta|rc)'; then
+          echo "DOCKER_TAG=$DOCKER_TAG" >> ${GITHUB_OUTPUT}
+          SERIAL=$(echo $RAW_VERSION | awk -F'+' '{print $2}')
+          echo "SERIAL=$SERIAL"
+          echo "SERIAL=$SERIAL" >> ${GITHUB_ENV}
+          echo "SERIAL=$SERIAL" >> ${GITHUB_OUTPUT}
+          if echo "$RAW_VERSION" | grep -qE '[+].*(alpha|beta|rc)'; then
             IS_STABLE=false
           else
             IS_STABLE=true
           fi
           echo "IS_STABLE=$IS_STABLE"
-          echo "DOCKER_TAG=$DOCKER_TAG" >> ${GITHUB_OUTPUT}
-          echo "DOCKER_TAG_NUM=$DOCKER_TAG_NUM" >> ${GITHUB_OUTPUT}
           echo "IS_STABLE=$IS_STABLE" >> ${GITHUB_OUTPUT}
       - name: Extract CPU architecture
         run: |
@@ -244,8 +245,9 @@ jobs:
     permissions:
       contents: write
     env:
+      BASE_URL: https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}
       DOCKER_TAG: ${{ needs.build.outputs.DOCKER_TAG }}
-      DOCKER_TAG_NUM: ${{ needs.build.outputs.DOCKER_TAG_NUM }}
+      SERIAL: ${{ needs.build.outputs.SERIAL }}
       IS_STABLE: ${{ needs.build.outputs.IS_STABLE }}
     steps:
       - name: Download binaries
@@ -286,10 +288,14 @@ jobs:
             SRC=$(docker images ${image} --format "{{.Repository}}:{{.Tag}}")
             DST=${{ env.KUBE_BASE_IMAGE_REGISTRY }}/$(echo $image | awk -F/ '{print $NF}' | awk -F'-loong64' '{print $1}'):$(echo $(docker images ${image} --format "{{.Tag}}") | awk -F'-linux' '{print $1}')
             echo "--- Tag $SRC -> $DST ---"
-            docker tag "$SRC" "$DST"
-            docker tag "$SRC" "$DST"-${{ env.DOCKER_TAG_NUM }}
-            docker push "$DST"
-            docker push "$DST"-${{ env.DOCKER_TAG_NUM }}
+            if [ "${{ env.IS_STABLE }}" = "true" ]; then
+              docker tag "$SRC" "$DST"
+              docker push "$DST"
+            else
+              echo "=== Skipping K8s-compatible tag (pre-release) ==="
+            fi
+            docker tag "$SRC" "$DST"-${{ env.SERIAL }}
+            docker push "$DST"-${{ env.SERIAL }}
           done
           echo "=== After push ==="
           docker images --format "table {{.Repository}}\t{{.Tag}}\t{{.ID}}\t{{.CreatedSince}}\t{{.Size}}" | (read -r header; echo "$header"; tail -n +2 | sort -k1,1 -k2,2)
@@ -307,8 +313,6 @@ jobs:
       - name: List Release files
         run: find loong64-artifacts -type f
       - name: Generate release body
-        env:
-          BASE_URL: https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}
         run: |
           cat > release-body.md <<'BODYEOF'
           ## Artifacts
