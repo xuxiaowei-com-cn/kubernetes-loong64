@@ -71,18 +71,15 @@ jobs:
           KUBE_CPU_ARCH="${KUBE_BUILD_PLATFORMS##*/}"
           echo "KUBE_CPU_ARCH=$KUBE_CPU_ARCH"
           echo "KUBE_CPU_ARCH=$KUBE_CPU_ARCH" >> ${GITHUB_ENV}
-      - name: Clone Kubernetes
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-        with:
-          repository: kubernetes/kubernetes
-          ref: ${{ env.KUBERNETES_BRANCH }}
-          path: kubernetes
-      - name: ls
-        run: ls -lah
       - name: Install build tools
         run: |
           apt update
           apt install -y git make curl jq file
+      - name: Clone Kubernetes
+        run: |
+          git clone --branch ${{ env.KUBERNETES_BRANCH }} --depth 1 https://github.com/kubernetes/kubernetes.git kubernetes
+      - name: ls
+        run: ls -lah
       - name: Install loong64 cross-compiler
         run: |
           apt update
