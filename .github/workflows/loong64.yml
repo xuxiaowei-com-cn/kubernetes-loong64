@@ -428,7 +428,7 @@ jobs:
           docker load -i kube-scheduler.tar
           ```
 
-          ## Verify signatures
+          ## Verifying releases
 
           ```shell
           gpg --keyserver keys.openpgp.org --recv-keys FCF8724722CCBF9F51B1FBE376532BE7E3013105
